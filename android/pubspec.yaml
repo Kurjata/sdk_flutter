@@ -2,3 +2,6 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.1
+  webview_flutter: ^4.0.1
+  webview_flutter_android: ^3.16.4
+  webview_flutter_wkwebview: ^3.13.1

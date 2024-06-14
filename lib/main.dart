@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:developer';
 
 void main() {
@@ -24,26 +24,27 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _statusMessage = 'Carregando...';
   Map<String, dynamic> _userData = {};
+  WebViewController? _webViewController;
 
   @override
   void initState() {
     super.initState();
-    fetchData();
   }
 
   Future<void> fetchData() async {
     try {
-      final response = await http.get(Uri.parse('https://app.track.co/survey/pKkCv3TQTZed5efab2b4-c083-4025-4fb0-1733838642d2'));
-      Map<String, dynamic> data = jsonDecode(response.body);
-      log('$data');
-      if (response.statusCode == 200) {
+      if (_webViewController != null) {
+
+        String html = await _webViewController!.currentUrl();
+        // Extrair dados JSON do HTML
+        _userData = jsonDecode(html);
+        log('Dados do Usuário: $_userData');
         setState(() {
-          _userData = json.decode(response.body);
           _statusMessage = 'Dados carregados com sucesso!';
         });
       } else {
         setState(() {
-          _statusMessage = 'Erro ao carregar dados: ${response.statusCode}';
+          _statusMessage = 'Erro ao carregar dados: WebView não inicializada.';
         });
       }
     } catch (e) {
@@ -60,30 +61,40 @@ class _HomePageState extends State<HomePage> {
         title: Text('Detalhes do Usuário'),
       ),
       body: Center(
-        child: _userData.isEmpty
-            ? Text(_statusMessage)
-            : ListView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text('Nome completo'),
-              subtitle: Text('${_userData['nome']} ${_userData['sobrenome']}'),
+            // WebView para abrir a URL e capturar os dados
+            SizedBox(
+              height: 300,
+              child: WebView(
+                initialUrl: 'https://app.track.co/survey/QGAILkDBvkAdbb80243a-41c9-49df-5250-1ad3693653c3',
+                javascriptMode: JavascriptMode.unrestricted,
+                onWebViewCreated: (controller) {
+                  _webViewController = controller;
+                },
+                onPageFinished: (url) {
+                  fetchData(); // Busca os dados após a página carregar
+                },
+              ),
             ),
-            ListTile(
-              leading: Icon(Icons.email),
-              title: Text('E-mail'),
-              subtitle: Text(_userData['email']),
-            ),
-            ListTile(
-              leading: Icon(Icons.account_circle),
-              title: Text('Login'),
-              subtitle: Text(_userData['login']),
-            ),
-            ListTile(
-              leading: Icon(Icons.lock_outline),
-              title: Text('CPF'),
-              subtitle: Text(_userData['cpf']),
-            ),
+            SizedBox(height: 20),
+            // Exibe o status e os dados do usuário
+            Text(_statusMessage),
+            if (!_userData.isEmpty)
+              ListView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: _userData.keys.length,
+                itemBuilder: (context, index) {
+                  final key = _userData.keys.elementAt(index);
+                  return ListTile(
+                    leading: Icon(Icons.person),
+                    title: Text(key),
+                    subtitle: Text(_userData[key].toString()),
+                  );
+                },
+              ),
           ],
         ),
       ),
